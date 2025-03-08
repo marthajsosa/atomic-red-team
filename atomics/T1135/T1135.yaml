@@ -238,3 +238,39 @@ atomic_tests:
     cleanup_command: remove-item "#{output_path}" -force -erroraction silentlycontinue
     name: powershell
     elevation_required: false        
+- name: Enumerate All Network Shares with Netscan
+  auto_generated_guid: 8f47db6f-2c6a-4698-9f93-a651e2fb4b2a
+  description: |
+    Netscan is a publicly available network scanning tool that has been used by various threat groups, including Black Basta and Akira, to enumerate accessible shares with write permissions. 
+    [Reference](https://thedfirreport.com/2024/01/29/buzzing-on-christmas-eve-trigona-ransomware-in-3-hours/#discovery)
+  supported_platforms:
+  - windows
+  input_arguments:
+    netscan_path:
+      description: Netscan exe location
+      type: path
+      default: 'Path\to\netscan.exe'
+    range_to_scan:
+      description: The IP range tot scan with Netscan
+      type: String
+      default: '127.0.0.1-127.0.0.1'
+    netscan_config_path:
+      description: Path to Netscan's config file
+      type: path
+      default: 'Path\to\config.xml'
+  dependency_executor_name: powershell
+  dependencies:
+  - description: |
+      Netscan must be installed
+    prereq_command: 'if (Test-Path "#{netscan_path}") {exit 0} else {exit 1}'
+    get_prereq_command: |
+      New-Item -Type Directory "PathToAtomicsFolder\..\ExternalPayloads\" -ErrorAction Ignore -Force | Out-Null
+      Invoke-WebRequest -OutFile "PathToAtomicsFolder\..\ExternalPayloads\netscan.zip" "https://www.softperfect.com/download/files/netscan_portable.zip"
+      Expand-Archive -LiteralPath "PathToAtomicsFolder\..\ExternalPayloads\netscan.zip" -DestinationPath "PathToAtomicsFolder\..\ExternalPayloads\netscan"
+  executor:
+    command: |-
+      cmd /c '#{netscan_path}' /hide /auto:"$env:temp\T1018NetscanOutput.txt" /range:'#{range_to_scan}'
+    cleanup_command: |
+      remove-item "$env:temp\T1018NetscanOutput.txt" -force -erroraction silentlycontinue
+    name: powershell
+    elevation_required: false
